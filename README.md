@@ -1,4 +1,4 @@
-# ⚡ Sprintly — Full-Stack Kanban Board
+# ⚡ Sprintly — Gen Ai :Full-Stack Kanban Board
 
 A production-ready Kanban board application built with **Next.js** (frontend) and **Express + Prisma** (backend). Features drag-and-drop cards, multi-board support, labels, checklists, and a fully responsive design.
 
