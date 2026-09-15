@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const AppError = require('../utils/AppError');
+const { triggerEmbeddingSync } = require('./ai.service');
 
 class LabelService {
   async getAllLabels() {
@@ -24,11 +25,15 @@ class LabelService {
   }
 
   async deleteLabel(id) {
-    const label = await prisma.label.findUnique({ where: { id } });
+    const label = await prisma.label.findUnique({ where: { id }, include: { cards: { select: { cardId: true } } } });
     if (!label) throw new AppError('Label not found', 404);
 
     // Prisma handles Cascade delete for CardLabel relation automatically due to onDelete: Cascade in schema
-    return prisma.label.delete({ where: { id } });
+    const deletedLabel = await prisma.label.delete({ where: { id } });
+
+    label.cards.forEach(cardLabel => triggerEmbeddingSync(cardLabel.cardId));
+
+    return deletedLabel;
   }
 }
 

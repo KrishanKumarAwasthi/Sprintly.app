@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const AppError = require('../utils/AppError');
+const { triggerEmbeddingSync } = require('./ai.service');
 
 class MemberService {
   async getAllMembers() {
@@ -24,10 +25,14 @@ class MemberService {
   }
 
   async deleteMember(id) {
-    const member = await prisma.member.findUnique({ where: { id } });
+    const member = await prisma.member.findUnique({ where: { id }, include: { cards: { select: { cardId: true } } } });
     if (!member) throw new AppError('Member not found', 404);
 
-    return prisma.member.delete({ where: { id } });
+    const deletedMember = await prisma.member.delete({ where: { id } });
+
+    member.cards.forEach(cardMember => triggerEmbeddingSync(cardMember.cardId));
+
+    return deletedMember;
   }
 }
 

@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const AppError = require('../utils/AppError');
+const { triggerEmbeddingSync } = require('./ai.service');
 
 class ListService {
   async getListsByBoardId(boardId) {
@@ -29,13 +30,19 @@ class ListService {
   }
 
   async updateListTitle(id, title) {
-    const list = await prisma.list.findUnique({ where: { id } });
+    const list = await prisma.list.findUnique({ where: { id }, include: { cards: { select: { id: true } } } });
     if (!list) throw new AppError('List not found', 404);
 
-    return prisma.list.update({
+    const updatedList = await prisma.list.update({
       where: { id },
       data: { title },
     });
+
+    if (list.title !== title) {
+      list.cards.forEach(card => triggerEmbeddingSync(card.id));
+    }
+
+    return updatedList;
   }
 
   async deleteList(id) {

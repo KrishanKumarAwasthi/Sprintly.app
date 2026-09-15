@@ -191,3 +191,12 @@ export async function createMember({ name }) {
 export async function deleteMember(id) {
   return request(`/members/${id}`, { method: "DELETE" });
 }
+
+// AI APIs
+export async function chatWithBoardAI(boardId, message) {
+  return request("/ai/chat", {
+    method: "POST",
+    body: JSON.stringify({ boardId, message }),
+  });
+}
+

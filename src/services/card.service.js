@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const AppError = require('../utils/AppError');
+const { triggerEmbeddingSync } = require('./ai.service');
 
 class CardService {
   async getCardsByListId(listId) {
@@ -52,7 +53,7 @@ class CardService {
     const list = await prisma.list.findUnique({ where: { id: listId } });
     if (!list) throw new AppError('List not found', 404);
 
-    return prisma.card.create({
+    const card = await prisma.card.create({
       data: {
         title,
         description,
@@ -61,6 +62,9 @@ class CardService {
         listId,
       },
     });
+
+    triggerEmbeddingSync(card.id);
+    return card;
   }
 
   async updateCard(id, data) {
@@ -80,10 +84,16 @@ class CardService {
       updateData.dueDate = null;
     }
 
-    return prisma.card.update({
+    const updatedCard = await prisma.card.update({
       where: { id },
       data: updateData,
     });
+
+    if (data.title !== undefined || data.description !== undefined || data.listId !== undefined) {
+      triggerEmbeddingSync(id);
+    }
+
+    return updatedCard;
   }
 
   async deleteCard(id) {
@@ -104,20 +114,18 @@ class CardService {
   }
 
   async reorderCard(listId, sourceIndex, destinationIndex) {
-    if (sourceIndex === destinationIndex) return;
-
     const cards = await prisma.card.findMany({
-      // got array
-      // Done
       where: { listId },
       orderBy: { position: 'asc' },
     });
 
-    if (cards.length === 0) return;
+    if (cards.length === 0) return null;
     if (sourceIndex < 0 || sourceIndex >= cards.length) throw new AppError('Invalid source index', 400);
     if (destinationIndex < 0 || destinationIndex >= cards.length) throw new AppError('Invalid destination index', 400);
 
     const draggedCard = cards[sourceIndex];
+    if (sourceIndex === destinationIndex) return draggedCard;
+
     // Go to index, delete no of elm, insert x and modify arry
     cards.splice(sourceIndex, 1);
     cards.splice(destinationIndex, 0, draggedCard);
@@ -172,13 +180,16 @@ class CardService {
       newPosition = (prevPosition + nextPosition) / 2;
     }
 
-    return prisma.card.update({
+    const updatedCard = await prisma.card.update({
       where: { id: cardId },
       data: { 
         position: newPosition,
         listId: destinationListId,
       },
     });
+
+    triggerEmbeddingSync(cardId);
+    return updatedCard;
   }
   async addLabel(cardId, labelId) {
     const card = await prisma.card.findUnique({ where: { id: cardId } });
@@ -187,11 +198,14 @@ class CardService {
     if (!card) throw new AppError('Card not found', 404);
     if (!label) throw new AppError('Label not found', 404);
 
-    return prisma.cardLabel.upsert({
+    const result = await prisma.cardLabel.upsert({
       where: { cardId_labelId: { cardId, labelId } },
       update: {},
       create: { cardId, labelId },
     });
+
+    triggerEmbeddingSync(cardId);
+    return result;
   }
 
   async removeLabel(cardId, labelId) {
@@ -200,6 +214,8 @@ class CardService {
     });
 
     if (count === 0) throw new AppError('Label is not assigned to this card', 404);
+
+    triggerEmbeddingSync(cardId);
   }
 
   async assignMember(cardId, memberId) {
@@ -209,11 +225,14 @@ class CardService {
     if (!card) throw new AppError('Card not found', 404);
     if (!member) throw new AppError('Member not found', 404);
 
-    return prisma.cardMember.upsert({
+    const result = await prisma.cardMember.upsert({
       where: { cardId_memberId: { cardId, memberId } },
       update: {},
       create: { cardId, memberId },
     });
+
+    triggerEmbeddingSync(cardId);
+    return result;
   }
 
   async removeMember(cardId, memberId) {
@@ -222,6 +241,8 @@ class CardService {
     });
 
     if (count === 0) throw new AppError('Member is not assigned to this card', 404);
+
+    triggerEmbeddingSync(cardId);
   }
 }
 

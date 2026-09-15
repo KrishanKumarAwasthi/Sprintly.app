@@ -44,6 +44,7 @@ model Card {
   labels      CardLabel[]
   members     CardMember[]
   checklists  Checklist[]
+  embedding   CardEmbedding?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -112,4 +113,18 @@ model ChecklistItem {
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model CardEmbedding {
+  id        String   @id @default(uuid())
+  
+  cardId    String   @unique
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  
+  boardId   String
+  content   String
+  embedding Unsupported("vector(768)")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

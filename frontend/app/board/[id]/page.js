@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import BoardHeader from "@/components/BoardHeader";
 import BottomNav from "@/components/BottomNav";
 import KanbanList from "@/components/KanbanList";
+import SprintlyAI from "@/components/SprintlyAI";
 import * as api from "../../lib/api";
 
 export default function BoardPage() {
@@ -734,6 +735,7 @@ export default function BoardPage() {
               }}
             />
           </div>
+          {board?.id && <SprintlyAI boardId={board.id} />}
         </main>
       </div>
     </div>
